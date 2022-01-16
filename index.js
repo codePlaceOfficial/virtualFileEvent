@@ -1,4 +1,3 @@
-const _ = require("loadsh")
 const PubSub = require('pubsub-js');
 
 const EVENT_TYPE = {

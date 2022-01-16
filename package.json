@@ -1,0 +1,11 @@
+{
+  "name": "virtualFileEvent",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/codePlaceOfficial/virtualFileEvent.git",
+  "author": "codePlaceOfficial <codeplace@yeah.net>",
+  "license": "MIT",
+  "dependencies": {
+    "pubsub-js": "^1.9.4"
+  }
+}

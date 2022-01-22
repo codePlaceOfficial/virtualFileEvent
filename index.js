@@ -16,7 +16,7 @@ const __generateEvent = (eventType, data) => {
     return event;
 }
 
-module.exports.generateEvent = {
+const generateEvent = {
     createDirEvent: (dirPath, dirName) => {
         return __generateEvent(EVENT_TYPE.createDir, { virtualPath: dirPath, dirName })
     },
@@ -46,53 +46,33 @@ module.exports.generateEvent = {
     }
 }
 
-module.exports.emitEvent = (event, vfs) => {
-    // console.log(event)
-    // 如果为单独event则变为数组
-    vfs.eventEmiter(event);
-}
-
-module.exports.setEventEmiter = (eventEmiter, vfs) => {
-    vfs.eventEmiter = eventEmiter;
-    vfs.subscribe = (eventType, func) => {
-        return PubSub.subscribe(vfs.LABEL + eventType, (_, data) => func(data));
-    }
-    vfs.unSubscribe = (token) => {
-        PubSub.unsubscribe(token)
-    }
-}
-
 const __execEvent = (event, virtualFile) => {
     switch (event.eventType) {
-        case EVENT_TYPE.changeFile:
-            virtualFile.changeFileContent(event.data.virtualPath, event.data.data)
-            break;
         case EVENT_TYPE.createDir:
-            virtualFile.createDir(event.data.virtualPath, event.data.dirName)
+            virtualFile.createDir({ virtualPath: event.data.virtualPath, dirName: event.data.dirName })
             break;
         case EVENT_TYPE.createFile:
-            virtualFile.createFile(event.data.virtualPath, event.data.fileName)
+            virtualFile.createFile({ virtualPath: event.data.virtualPath, fileName: event.data.fileName })
             break;
         case EVENT_TYPE.renameFile:
-            virtualFile.renameFile(event.data.virtualPath, event.data.newName)
+            virtualFile.renameFile({ virtualPath: event.data.virtualPath, newName: event.data.newName })
             break;
         case EVENT_TYPE.deleteFile:
-            virtualFile.deleteFile(event.data.virtualPath)
+            virtualFile.deleteFile({ virtualPath: event.data.virtualPath })
             break;
         case EVENT_TYPE.moveFile:
-            virtualFile.moveFile(event.data.virtualPath, event.data.newPath)
+            virtualFile.moveFile({ virtualPath: event.data.virtualPath, newPath: event.data.newPath })
             break;
         case EVENT_TYPE.setFileContent:
-            virtualFile.changeFileContent(event.data.virtualPath, event.data.content)
+            virtualFile.changeFileContent({ virtualPath: event.data.virtualPath, content: event.data.content })
             break;
         default:
             break;
     }
 }
 
-module.exports.serverDefaultExecEvent = (event, virtualFile) => {
-    // console.log("=====",virtualFile.LABEL+event.eventType)
-    PubSub.publish(virtualFile.LABEL + event.eventType, event.data)
+const serverDefaultExecEvent = (event, virtualFile) => {
+    PubSub.publish(event.eventType, event.data)
 
     switch (event.eventType) {
         case EVENT_TYPE.createDir:
@@ -106,7 +86,7 @@ module.exports.serverDefaultExecEvent = (event, virtualFile) => {
         case EVENT_TYPE.getFileContent:
             virtualFile.getFileContent(event.data.virtualPath).then(
                 (data) => {
-                    this.emitEvent(this.generateEvent.getFileContentEvent(event.data.virtualPath, data), virtualFile)
+                    virtualFile.eventEmitter.emitEvent(generateEvent.getFileContentEvent(event.data.virtualPath, data))
                 }
             )
             break;
@@ -114,9 +94,8 @@ module.exports.serverDefaultExecEvent = (event, virtualFile) => {
             break;
     }
 }
-module.exports.clientDefaultExecEvent = (event, virtualFile) => {
-    PubSub.publish(virtualFile.LABEL + event.eventType, event.data)
-    // console.log("=====",virtualFile.LABEL+event.eventType,event)
+const clientDefaultExecEvent = (event, virtualFile) => {
+    PubSub.publish(event.eventType, event.data)
     switch (event.eventType) {
         case EVENT_TYPE.createDir:
         case EVENT_TYPE.createFile:
@@ -126,7 +105,7 @@ module.exports.clientDefaultExecEvent = (event, virtualFile) => {
             __execEvent(event, virtualFile);
             break;
         case EVENT_TYPE.getFileContent:
-            virtualFile.setFileContent(event.data.virtualPath, event.data.data)
+            virtualFile.setFileContent({ virtualPath: event.data.virtualPath, content: event.data.data })
             return;
         case EVENT_TYPE.fileChange:
             // console.log(event.data.virtualPath,"change")
@@ -136,5 +115,24 @@ module.exports.clientDefaultExecEvent = (event, virtualFile) => {
     }
 }
 
+class EventEmitter {
+    constructor(eventEmiter) {
+        this.eventEmiter = eventEmiter
+    }
+    emitEvent(event) {
+        this.eventEmiter(event);
+    }
+    subscribe(eventType, func) {
+        return PubSub.subscribe(eventType, (_, data) => func(data));
+    }
+    unSubscribe = PubSub.unsubscribe
+}
 
-module.exports.EVENT_TYPE = EVENT_TYPE
+
+module.exports = {
+    EVENT_TYPE,
+    generateEvent,
+    serverDefaultExecEvent,
+    clientDefaultExecEvent,
+    EventEmitter
+}
